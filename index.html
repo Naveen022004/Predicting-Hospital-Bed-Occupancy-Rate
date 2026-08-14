@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hospital Bed Occupancy Predictor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #121212;
+            font-family: 'Segoe UI', sans-serif;
+            color: #f1f1f1;
+        }
+
+        header {
+            background: linear-gradient(90deg, #0f2027, #203a43, #2c5364);
+            color: #00e5ff;
+            text-align: center;
+            padding: 2rem;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+
+        main {
+            background: #1e1e1e;
+            margin: 2rem auto;
+            padding: 2rem;
+            border-radius: 16px;
+            max-width: 900px;
+            box-shadow: 0 0 40px rgba(0,255,255,0.15);
+        }
+
+        h2, h3 {
+            color: #00eaff;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            color: #ccc;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            color: #a6e1fa;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        input[type="number"], input[type="text"], select {
+            padding: 0.8rem;
+            border-radius: 12px;
+            border: none;
+            background: #1f1f1f;
+            color: #fff;
+            font-size: 1rem;
+            box-shadow: 0 0 15px rgba(0,255,255,0.2);
+            transition: 0.3s ease;
+            width: 100%;
+            outline: none;
+        }
+
+        input[type="number"]:focus, 
+        input[type="text"]:focus, 
+        select:focus {
+            box-shadow: 0 0 25px rgba(0,255,255,0.6);
+            transform: scale(1.03);
+        }
+
+        input[type="submit"] {
+            grid-column: span 2;
+            padding: 1rem;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s ease;
+            box-shadow: 0 0 20px #00c6ff, 0 0 40px rgba(0,198,255,0.3);
+        }
+
+        input[type="submit"]:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 35px #00eaff, 0 0 60px rgba(0,198,255,0.5);
+        }
+
+        .result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 16px;
+            background: #263238;
+            font-size: 1.3rem;
+            color: #00e5ff;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,255,255,0.3);
+        }
+
+        canvas {
+            margin-top: 2rem;
+            display: block;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        footer {
+            text-align: center;
+            color: #888;
+            padding: 1.5rem;
+            font-size: 0.9rem;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+<header>Hospital Bed Occupancy Predictor 🚑</header>
+<main>
+    <h2>Predict Bed Occupancy with ML</h2>
+    <p>Enter the relevant hospital and regional information to estimate the bed occupancy rate.</p>
+    <form method="POST">
+        <div><label>Staffed All Beds</label><input type="number" name="staffed_all" required></div>
+        <div><label>Staffed ICU Beds</label><input type="number" name="icu_beds" required></div>
+        <div><label>Licensed All Beds</label><input type="number" name="licensed" required></div>
+        <div><label>ICU Bed Occupancy Rate (%)</label><input type="number" name="icu_rate" required></div>
+        <div><label>Population</label><input type="number" name="population" required></div>
+        <div><label>Population (20+)</label><input type="number" name="pop_20" required></div>
+        <div><label>Population (65+)</label><input type="number" name="pop_65" required></div>
+        <div>
+            <label>State</label>
+            <select name="state" required>
+                <option value="">-- Select State --</option>
+                <option value="California">California</option>
+                <option value="Texas">Texas</option>
+                <option value="New York">New York</option>
+                <option value="Florida">Florida</option>
+                <option value="Illinois">Illinois</option>
+                <option value="Ohio">Ohio</option>
+                <option value="Georgia">Georgia</option>
+                <option value="North Carolina">North Carolina</option>
+                <option value="Michigan">Michigan</option>
+                <option value="Pennsylvania">Pennsylvania</option>
+                <option value="Arizona">Arizona</option>
+                <option value="Washington">Washington</option>
+            </select>
+        </div>
+        <div><label>County Name</label><input type="text" name="county" required></div>
+        <div>
+            <label>ICU Bed Source</label>
+            <select name="icu_source" required>
+                <option value="">-- Select Source --</option>
+                <option value="State Reported">State Reported</option>
+                <option value="HHS Reported">HHS Reported</option>
+            </select>
+        </div>
+        <input type="submit" value="💡 Predict Now">
+    </form>
+
+    {% if prediction is not none %}
+    <div class="result">Predicted Bed Occupancy Rate: {{ prediction * 100 }}%</div>
+    <canvas id="occupancyChart"></canvas>
+    <script>
+        const ctx = document.getElementById('occupancyChart').getContext('2d');
+        const occupancy = {{ prediction * 100 }};
+        const available = 100 - occupancy;
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Occupied Beds', 'Available Beds'],
+                datasets: [{
+                    label: 'Hospital Capacity',
+                    data: [occupancy, available],
+                    backgroundColor: ['#00e5ff', '#424242'],
+                    borderColor: '#121212',
+                    borderWidth: 4,
+                    hoverOffset: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#eee' }},
+                    title: { display: true, text: '3D-Style Bed Occupancy Breakdown', color: '#00eaff' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+    {% endif %}
+</main>
+<footer>&copy; 2025 Hospital AI Project &mdash; All fields included & 3D-style analytics</footer>
+</body>
+</html>
