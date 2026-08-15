@@ -1,7 +1,7 @@
 import streamlit as st
 import joblib
 import pandas as pd
-import sklearn  # Required so pickle/joblib resolves sklearn classes cleanly
+import sklearn
 
 st.set_page_config(
     page_title="Hospital Bed Occupancy Predictor",
